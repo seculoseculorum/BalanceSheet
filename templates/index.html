@@ -1,0 +1,91 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taselaskuri</title>
+    <style>
+        table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px; }
+    </style>
+    <script>
+        function addRow() {
+            const table = document.getElementById("balanceSheetTable");
+            const row = table.insertRow();
+            
+            row.innerHTML = `
+                <td><input type="text" name="name[]" required></td>
+                <td>
+                    <select name="class[]" required>
+                        <option value="Asset">Asset</option>
+                        <option value="Liability">Liability</option>
+                    </select>
+                </td>
+                <td><input type="number" step="0.01" name="book_value[]" required></td>
+                <td><input type="number" step="0.01" name="market_value[]" required></td>
+                <td><input type="text" name="comment[]"></td>
+            `;
+        }
+    </script>
+</head>
+<body>
+    <h1>Taselaskuri</h1>
+    <form method="POST">
+        <table id="balanceSheetTable">
+            <tr>
+                <th>Nimi</th>
+                <th>Tyyppi</th>
+                <th>Kirjanpitoarvo</th>
+                <th>Markkina-arvo</th>
+                <th>Kommentti</th>
+            </tr>
+            {% if rows %}
+                {% for row in rows %}
+                <tr>
+                    <td><input type="text" name="name[]" value="{{ row.name }}" required></td>
+                    <td>
+                        <select name="class[]" required>
+                            <option value="Vara" {% if row.class == 'Vara' %}selected{% endif %}>Vara</option>
+                            <option value="Velka" {% if row.class == 'Velka' %}selected{% endif %}>Velka</option>
+                        </select>
+                    </td>
+                    <td><input type="number" step="0.01" name="book_value[]" value="{{ row.book_value }}" required></td>
+                    <td><input type="number" step="0.01" name="market_value[]" value="{{ row.market_value }}" required></td>
+                    <td><input type="text" name="comment[]" value="{{ row.comment }}"></td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td><input type="text" name="name[]" required></td>
+                    <td>
+                        <select name="class[]" required>
+                            <option value="Vara">Asset</option>
+                            <option value="Velka">Liability</option>
+                        </select>
+                    </td>
+                    <td><input type="number" step="0.01" name="book_value[]" required></td>
+                    <td><input type="number" step="0.01" name="market_value[]" required></td>
+                    <td><input type="text" name="comment[]"></td>
+                </tr>
+            {% endif %}
+        </table>
+        <br>
+        <button type="button" onclick="addRow()">Add Row</button>
+        <input type="submit" value="Calculate Totals">
+    </form>
+
+    {% if result %}
+        <h2>Totals:</h2>
+        <p><strong>Total Assets (Book):</strong> {{ result.total_assets_book }}</p>
+        <p><strong>Total Assets (Market):</strong> {{ result.total_assets_market }}</p>
+        <p><strong>Total Liabilities (Book):</strong> {{ result.total_liabilities_book }}</p>
+        <p><strong>Total Liabilities (Market):</strong> {{ result.total_liabilities_market }}</p>
+        <p><strong>Equity (Book):</strong> {{ result.equity_book }}</p>
+        <p><strong>Equity (Market):</strong> {{ result.equity_market }}</p>
+    {% endif %}
+
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+</body>
+</html>
