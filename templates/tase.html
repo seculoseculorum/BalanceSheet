@@ -1,18 +1,74 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taselaskuri</title>
-    <style>
-        table, th, td { border: 1px solid black; border-collapse: collapse; padding: 5px; }
-    </style>
-    <script>
-        function addRow() {
-            const table = document.getElementById("balanceSheetTable");
-            const row = table.insertRow();
-            
-            row.innerHTML = `
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taselaskuri</title>
+<style>
+    table, th, td { 
+        border: 1px solid black; 
+        border-collapse: collapse; 
+        padding: 5px; 
+    }
+    .bar-container {
+        display: flex;
+        align-items: flex-end;
+        gap: 20px;
+        height: 200px; /* height of bars */
+        margin-bottom: 10px;
+    }
+    .bar {
+        width: 50px;
+        position: relative;
+        display: flex;
+        flex-direction: column-reverse;
+        justify-content: flex-start;
+        border: 1px solid #999;
+    }
+    .segment {
+        width: 100%;
+        text-align: center;
+        color: white;
+        font-size: 0.8em;
+    }
+    .label {
+        text-align: center;
+        margin-top: 5px;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+<h1>Taselaskuri</h1>
+
+<form method="POST">
+    <table id="balanceSheetTable">
+        <tr>
+            <th>Nimi</th>
+            <th>Tyyppi</th>
+            <th>Kirjanpitoarvo</th>
+            <th>Markkina-arvo</th>
+            <th>Kommentti</th>
+            <th>Poista</th>
+        </tr>
+        {% if rows %}
+            {% for row in rows %}
+            <tr>
+                <td><input type="text" name="name[]" value="{{ row.name }}" required></td>
+                <td>
+                    <select name="class[]" required>
+                        <option value="Vara" {% if row.class == 'Vara' %}selected{% endif %}>Vara</option>
+                        <option value="Velka" {% if row.class == 'Velka' %}selected{% endif %}>Velka</option>
+                    </select>
+                </td>
+                <td><input type="number" step="0.01" name="book_value[]" value="{{ row.book_value }}" required></td>
+                <td><input type="number" step="0.01" name="market_value[]" value="{{ row.market_value }}" required></td>
+                <td><input type="text" name="comment[]" value="{{ row.comment }}"></td>
+                <td><button type="button" onclick="this.closest('tr').remove()">Poista</button></td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
                 <td><input type="text" name="name[]" required></td>
                 <td>
                     <select name="class[]" required>
@@ -24,95 +80,68 @@
                 <td><input type="number" step="0.01" name="market_value[]" required></td>
                 <td><input type="text" name="comment[]"></td>
                 <td><button type="button" onclick="this.closest('tr').remove()">Poista</button></td>
-            `;;
-        }
-    </script>
-</head>
-<body>
-    <h1>Taselaskuri</h1>
-    <p>Tase on taloudellinen tilannekuva, joka näyttää varasi ja velkasi yhdellä silmäyksellä. 
-    Se kertoo vakavaraisuutesi sekä sen, kuinka varallisuutesi on rahoitettu. 
-    Jos varasi ylittävät velkasi, sinulla on omaa pääomaa eli itse rahoitettuja varoja.</p>
-    <form method="POST">
-        <table id="balanceSheetTable">
-            <tr>
-                <th>Nimi</th>
-                <th>Tyyppi</th>
-                <th>Kirjanpitoarvo</th>
-                <th>Markkina-arvo</th>
-                <th>Kommentti</th>
-                <th>Poista</th>
             </tr>
-            {% if rows %}
-                {% for row in rows %}
-                <tr>
-                    <td><input type="text" name="name[]" value="{{ row.name }}" required></td>
-                    <td>
-                        <select name="class[]" required>
-                            <option value="Vara" {% if row.class == 'Vara' %}selected{% endif %}>Vara</option>
-                            <option value="Velka" {% if row.class == 'Velka' %}selected{% endif %}>Velka</option>
-                        </select>
-                    </td>
-                    <td><input type="number" step="0.01" name="book_value[]" value="{{ row.book_value }}" required></td>
-                    <td><input type="number" step="0.01" name="market_value[]" value="{{ row.market_value }}" required></td>
-                    <td><input type="text" name="comment[]" value="{{ row.comment }}"></td>
-                    <td><button type="button" onclick="this.parentElement.parentElement.remove()">Poista</button></td>
-                </tr>[]" value="{{ row.name }}" required></td>
-                    <td>
-                        <select name="class[]" required>
-                            <option value="Vara" {% if row.class == 'Vara' %}selected{% endif %}>Vara</option>
-                            <option value="Velka" {% if row.class == 'Velka' %}selected{% endif %}>Velka</option>
-                        </select>
-                    </td>
-                    <td><input type="number" step="0.01" name="book_value[]" value="{{ row.book_value }}" required></td>
-                    <td><input type="number" step="0.01" name="market_value[]" value="{{ row.market_value }}" required></td>
-                    <td><input type="text" name="comment[]" value="{{ row.comment }}"></td>
-                </tr>
+        {% endif %}
+    </table>
+    <br>
+    <button type="button" onclick="addRow()">Lisää rivi</button>
+    <input type="submit" value="Laske">
+</form>
+
+{% if result %}
+<h2>Yhteenveto</h2>
+
+<div style="display:flex; gap:50px; margin-top:20px;">
+    <!-- Kirjanpitoarvo -->
+    <div>
+        <h3>Kirjanpitoarvo</h3>
+        <div class="bar-container" style="height:200px;">
+            <!-- Varat (100%) -->
+            <div class="bar" style="height:100%;" title="Varat">
+                {% for asset in result.assets %}
+                    <div class="segment" style="height:{{ (asset.book_value / result.total_assets_book * 100)|round(2) }}%; background-color:#0d6efd;" title="{{ asset.name }}: {{ asset.book_value }}"></div>
                 {% endfor %}
-            {% else %}
-                <tr>
-                    <td><input type="text" name="name[]" required></td>
-                    <td>
-                        <select name="class[]" required>
-                            <option value="Vara">Vara</option>
-                            <option value="Velka">Velka</option>
-                        </select>
-                    </td>
-                    <td><input type="number" step="0.01" name="book_value[]" required></td>
-                    <td><input type="number" step="0.01" name="market_value[]" required></td>
-                    <td><input type="text" name="comment[]"></td>
-                </tr>
-            {% endif %}
-          
-
-       </table>
-        <br>
-        <button type="button" onclick="addRow()">Lisää rivi</button>
-        <input type="submit" value="Laske">
-        <br><br> <!-- Välilyönti nappien jälkeen -->
-
-        <div style="background-color:#f0f0f0; padding:10px; font-size:0.9em;">
-            <strong>Selitykset:</strong> 
-            <br><strong>Nimi</strong> = kohteen tai erän nimi (esim. pankkitili, kone, laina) 
-            <br><strong>Tyyppi</strong> = Vara (omistettava resurssi) tai Velka (velvoite)
-            <br><strong>Kirjanpitoarvo</strong> = kohteen arvo kirjanpidossa eli hankintahinta tai jäännösarvo 
-            <br><strong>Markkina-arvo</strong> = kohteen nykyinen markkina-arvo
-            <br><strong>Jäännösarvo</strong> = omaisuuserän nykyinen kirjanpidollinen arvo poistojen jälkeen
-            <br><strong>Poisto</strong> = erän arvon aleneminen ajan myötä
+            </div>
+            <!-- Velat / Oma Pääoma (scaled relative to total assets) -->
+            <div class="bar" style="height:{{ ((result.total_liabilities_book + result.equity_book) / result.total_assets_book * 100)|round(2) }}%;" title="Velat / Oma Pääoma">
+                {% for liability in result.liabilities %}
+                    <div class="segment" style="height:{{ (liability.book_value / result.total_assets_book * 100)|round(2) }}%; background-color:#dc3545;" title="{{ liability.name }}: {{ liability.book_value }}"></div>
+                {% endfor %}
+                {% if result.equity_book >= 0 %}
+                    <div class="segment" style="height:{{ (result.equity_book / result.total_assets_book * 100)|round(2) }}%; background-color:#198754;" title="Oma Pääoma: {{ result.equity_book }}"></div>
+                {% else %}
+                    <div class="segment" style="height:{{ (-result.equity_book / result.total_assets_book * 100)|round(2) }}%; background-color:#ffc107;" title="Negatiivinen Oma Pääoma: {{ result.equity_book }}"></div>
+                {% endif %}
+            </div>
         </div>
+        <div class="label">
+            Varat: {{ result.total_assets_book }} | Velat + Oma Pääoma: {{ result.total_liabilities_book + result.equity_book }}
+        </div>
+    </div>
 
-    {% if result %}
-        <h2>Yhteenveto:</h2>
-        <p><strong>Varat yhteensä (kirjanpitoarvo):</strong> {{ result.total_assets_book }}</p>
-        <p><strong>Varat yhteensä (markkina-arvo):</strong> {{ result.total_assets_market }}</p>
-        <p><strong>Velat yhteensä (kirjanpitoarvo):</strong> {{ result.total_liabilities_book }}</p>
-        <p><strong>Velat yhteensä (markkina-arvo):</strong> {{ result.total_liabilities_market }}</p>
-        <p><strong>Oma pääoma (kirjanpitoarvo):</strong> {{ result.equity_book }}</p>
-        <p><strong>Oma pääoma (markkina-arvo):</strong> {{ result.equity_market }}</p>
-    {% endif %}
-
-    {% if error %}
-        <p style="color:red;">{{ error }}</p>
-    {% endif %}
-</body>
-</html>
+    <!-- Markkina-arvo -->
+    <div>
+        <h3>Markkina-arvo</h3>
+        <div class="bar-container" style="height:200px;">
+            <div class="bar" style="height:100%;" title="Varat">
+                {% for asset in result.assets %}
+                    <div class="segment" style="height:{{ (asset.market_value / result.total_assets_market * 100)|round(2) }}%; background-color:#0d6efd;" title="{{ asset.name }}: {{ asset.market_value }}"></div>
+                {% endfor %}
+            </div>
+            <div class="bar" style="height:{{ ((result.total_liabilities_market + result.equity_market) / result.total_assets_market * 100)|round(2) }}%;" title="Velat / Oma Pääoma">
+                {% for liability in result.liabilities %}
+                    <div class="segment" style="height:{{ (liability.market_value / result.total_assets_market * 100)|round(2) }}%; background-color:#dc3545;" title="{{ liability.name }}: {{ liability.market_value }}"></div>
+                {% endfor %}
+                {% if result.equity_market >= 0 %}
+                    <div class="segment" style="height:{{ (result.equity_market / result.total_assets_market * 100)|round(2) }}%; background-color:#198754;" title="Oma Pääoma: {{ result.equity_market }}"></div>
+                {% else %}
+                    <div class="segment" style="height:{{ (-result.equity_market / result.total_assets_market * 100)|round(2) }}%; background-color:#ffc107;" title="Negatiivinen Oma Pääoma: {{ result.equity_market }}"></div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="label">
+            Varat: {{ result.total_assets_market }} | Velat + Oma Pääoma: {{ result.total_liabilities_market + result.equity_market }}
+        </div>
+    </div>
+</div>
+{% endif %}
