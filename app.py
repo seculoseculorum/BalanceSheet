@@ -81,6 +81,8 @@ def tase_laskuri():
             total_liabilities_book = 0
             total_liabilities_market = 0
 
+            rows = []
+
             for i in range(len(names)):
                 row = {
                     "name": names[i],
@@ -98,13 +100,20 @@ def tase_laskuri():
                     total_liabilities_book += row["book_value"]
                     total_liabilities_market += row["market_value"]
 
+            # ✅ Define lists for treemap
+            assets = [r for r in rows if r["class"].lower() in ["asset", "vara"]]
+            liabilities = [r for r in rows if r["class"].lower() in ["liability", "velka"]]
+
+            # ✅ Build result
             result = {
                 "total_assets_book": total_assets_book,
                 "total_assets_market": total_assets_market,
                 "total_liabilities_book": total_liabilities_book,
                 "total_liabilities_market": total_liabilities_market,
                 "equity_book": total_assets_book - total_liabilities_book,
-                "equity_market": total_assets_market - total_liabilities_market
+                "equity_market": total_assets_market - total_liabilities_market,
+                "assets": assets,
+                "liabilities": liabilities
             }
 
         except ValueError:
