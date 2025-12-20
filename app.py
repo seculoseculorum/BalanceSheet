@@ -76,35 +76,44 @@ def tase_laskuri():
             market_values = request.form.getlist("market_value[]")
             comments = request.form.getlist("comment[]")
 
-            total_assets_book = 0
-            total_assets_market = 0
-            total_liabilities_book = 0
-            total_liabilities_market = 0
+            # ✅ Ensure all lists have equal length
+            count = min(
+                len(names),
+                len(classes),
+                len(book_values),
+                len(market_values),
+                len(comments)
+            )
 
-            rows = []
+            total_assets_book = 0.0
+            total_assets_market = 0.0
+            total_liabilities_book = 0.0
+            total_liabilities_market = 0.0
 
-            for i in range(len(names)):
+            for i in range(count):
+                cls = (classes[i] or "").strip().lower()
+
                 row = {
-                    "name": names[i],
+                    "name": names[i].strip(),
                     "class": classes[i],
                     "book_value": float(book_values[i] or 0),
                     "market_value": float(market_values[i] or 0),
-                    "comment": comments[i]
+                    "comment": comments[i].strip()
                 }
+
                 rows.append(row)
 
-                if classes[i].lower() in ["asset", "vara"]:
+                if cls in ["vara", "asset"]:
                     total_assets_book += row["book_value"]
                     total_assets_market += row["market_value"]
-                elif classes[i].lower() in ["liability", "velka"]:
+
+                elif cls in ["velka", "liability"]:
                     total_liabilities_book += row["book_value"]
                     total_liabilities_market += row["market_value"]
 
-            # ✅ Define lists for treemap
-            assets = [r for r in rows if r["class"].lower() in ["asset", "vara"]]
-            liabilities = [r for r in rows if r["class"].lower() in ["liability", "velka"]]
+            assets = [r for r in rows if r["class"].lower() in ["vara", "asset"]]
+            liabilities = [r for r in rows if r["class"].lower() in ["velka", "liability"]]
 
-            # ✅ Build result
             result = {
                 "total_assets_book": total_assets_book,
                 "total_assets_market": total_assets_market,
@@ -116,10 +125,21 @@ def tase_laskuri():
                 "liabilities": liabilities
             }
 
-        except ValueError:
-            error = "Please enter valid numeric values for Book and Market value."
+            # ✅ PRINT RESULT (debug / verification)
+            print("=== BALANCE SHEET RESULT ===")
+            for k, v in result.items():
+                print(f"{k}: {v}")
 
-    return render_template("tase.html", result=result, error=error, rows=rows)
+        except ValueError as e:
+            error = "Please enter valid numeric values."
+            print("VALUE ERROR:", e)
+
+    return render_template(
+        "tase.html",
+        result=result,
+        error=error,
+        rows=rows
+    )
 
 
 # ----------------------------

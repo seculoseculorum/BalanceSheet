@@ -3,12 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Taselaskuri</title>
-
-    <!-- Chart libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2"></script>
 
     <style>
         table, th, td {
@@ -21,17 +16,6 @@
         input[type="submit"]:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-        }
-
-        .charts {
-            display: flex;
-            gap: 40px;
-            flex-wrap: wrap;
-            margin-top: 30px;
-        }
-
-        canvas {
-            border: 1px solid #ccc;
         }
     </style>
 </head>
@@ -52,28 +36,7 @@
                 <th>Poista</th>
             </tr>
         </thead>
-
         <tbody>
-        {% if rows %}
-            {% for row in rows %}
-            <tr>
-                <td><input type="text" name="name[]" value="{{ row.name }}" required></td>
-                <td>
-                    <select name="class[]" required>
-                        <option value="">– valitse –</option>
-                        <option value="Vara" {% if row.class == "Vara" %}selected{% endif %}>Vara</option>
-                        <option value="Velka" {% if row.class == "Velka" %}selected{% endif %}>Velka</option>
-                    </select>
-                </td>
-                <td><input type="number" step="0.01" name="book_value[]" value="{{ row.book_value }}" required></td>
-                <td><input type="number" step="0.01" name="market_value[]" value="{{ row.market_value }}" required></td>
-                <td><input type="text" name="comment[]" value="{{ row.comment }}"></td>
-                <td>
-                    <button type="button" class="remove-btn" onclick="removeRow(this)">Poista</button>
-                </td>
-            </tr>
-            {% endfor %}
-        {% else %}
             <tr>
                 <td><input type="text" name="name[]" required></td>
                 <td>
@@ -87,24 +50,24 @@
                 <td><input type="number" step="0.01" name="market_value[]" required></td>
                 <td><input type="text" name="comment[]"></td>
                 <td>
-                    <button type="button" class="remove-btn" onclick="removeRow(this)">Poista</button>
+                    <button type="button" class="remove-btn" onclick="removeRow(this)">
+                        Poista
+                    </button>
                 </td>
             </tr>
-        {% endif %}
         </tbody>
     </table>
 
     <br>
     <button type="button" onclick="addRow()">Lisää rivi</button>
-    <input type="submit" id="submitBtn" value="Laske" disabled>
+    <input type="submit" id="submitBtn" value="Lähetä" disabled>
 </form>
 
-<!-- ================= FORM LOGIC ================= -->
 <script>
 function addRow() {
     const tbody = document.querySelector("#balanceSheetTable tbody");
-
     const row = document.createElement("tr");
+
     row.innerHTML = `
         <td><input type="text" name="name[]" required></td>
         <td>
@@ -117,7 +80,11 @@ function addRow() {
         <td><input type="number" step="0.01" name="book_value[]" required></td>
         <td><input type="number" step="0.01" name="market_value[]" required></td>
         <td><input type="text" name="comment[]"></td>
-        <td><button type="button" class="remove-btn" onclick="removeRow(this)">Poista</button></td>
+        <td>
+            <button type="button" class="remove-btn" onclick="removeRow(this)">
+                Poista
+            </button>
+        </td>
     `;
 
     tbody.appendChild(row);
@@ -126,24 +93,26 @@ function addRow() {
     validateForm();
 }
 
-function removeRow(btn) {
+function removeRow(button) {
     const tbody = document.querySelector("#balanceSheetTable tbody");
     if (tbody.rows.length > 1) {
-        btn.closest("tr").remove();
+        button.closest("tr").remove();
     }
     updateRemoveButtons();
     validateForm();
 }
 
 function updateRemoveButtons() {
-    document.querySelectorAll(".remove-btn")
-        .forEach(b => b.disabled = document.querySelectorAll("#balanceSheetTable tbody tr").length === 1);
+    const rows = document.querySelectorAll("#balanceSheetTable tbody tr");
+    document.querySelectorAll(".remove-btn").forEach(btn => {
+        btn.disabled = rows.length === 1;
+    });
 }
 
 function validateForm() {
-    const required = document.querySelectorAll("#balanceSheetTable [required]");
-    const valid = [...required].every(f => f.value.trim() !== "");
-    document.getElementById("submitBtn").disabled = !valid;
+    const requiredFields = document.querySelectorAll("#balanceSheetTable [required]");
+    const isValid = [...requiredFields].every(field => field.value.trim() !== "");
+    document.getElementById("submitBtn").disabled = !isValid;
 }
 
 function attachValidation(row) {
@@ -159,76 +128,34 @@ document.addEventListener("DOMContentLoaded", () => {
     validateForm();
 });
 </script>
-
-<!-- ================= TREEMAPS ================= -->
-
 {% if result %}
-<div class="charts">
-    <div>
-        <h3>Kirjanpitoarvo</h3>
-        <canvas id="treemapBook" width="400" height="300"></canvas>
-    </div>
-    <div>
-        <h3>Markkina-arvo</h3>
-        <canvas id="treemapMarket" width="400" height="300"></canvas>
-    </div>
-</div>
+<hr>
 
-<script>
-// Prepare data for treemaps
-const bookData = [
-    {% for asset in result.assets %}
-    { group: "Assets", label: "{{ asset.name }}", value: {{ asset.book_value }} }{% if not loop.last %},{% endif %}
-    {% endfor %}
-    {% if result.assets and result.liabilities %},{% endif %}
-    {% for liability in result.liabilities %}
-    { group: "Liabilities", label: "{{ liability.name }}", value: {{ liability.book_value }} }{% if not loop.last %},{% endif %}
-    {% endfor %}
-];
+<h2>Tulos</h2>
 
-const marketData = [
-    {% for asset in result.assets %}
-    { group: "Assets", label: "{{ asset.name }}", value: {{ asset.market_value }} }{% if not loop.last %},{% endif %}
-    {% endfor %}
-    {% if result.assets and result.liabilities %},{% endif %}
-    {% for liability in result.liabilities %}
-    { group: "Liabilities", label: "{{ liability.name }}", value: {{ liability.market_value }} }{% if not loop.last %},{% endif %}
-    {% endfor %}
-];
-
-console.log("Book Data:", bookData);
-console.log("Market Data:", marketData);
-
-function renderTreemap(id, data) {
-    if (data.length === 0) {
-        console.error(`No data for treemap: ${id}`);
-        return;
-    }
-    
-    new Chart(document.getElementById(id), {
-        type: "treemap",
-        data: {
-            datasets: [{
-                tree: data,
-                key: "value",
-                groups: ["group"],
-                spacing: 1,
-                backgroundColor(ctx) {
-                    return ctx.raw.group === "Assets" ? "#0d6efd"
-                         : ctx.raw.group === "Liabilities" ? "#dc3545"
-                         : "#198754";
-                },
-                labels: { display: true, formatter: ctx => `${ctx.raw.label}: ${ctx.raw.value}` }
-            }]
-        },
-        options: { plugins: { legend: { display: false } } }
-    });
-}
-
-renderTreemap("treemapBook", bookData);
-renderTreemap("treemapMarket", marketData);
-</script>
+<table>
+    <tr>
+        <th></th>
+        <th>Kirjanpitoarvo</th>
+        <th>Markkina-arvo</th>
+    </tr>
+    <tr>
+        <td><strong>Vastaavaa (Assets)</strong></td>
+        <td>{{ "%.2f"|format(result.total_assets_book) }}</td>
+        <td>{{ "%.2f"|format(result.total_assets_market) }}</td>
+    </tr>
+    <tr>
+        <td><strong>Vastattavaa (Liabilities)</strong></td>
+        <td>{{ "%.2f"|format(result.total_liabilities_book) }}</td>
+        <td>{{ "%.2f"|format(result.total_liabilities_market) }}</td>
+    </tr>
+    <tr>
+        <td><strong>Oma pääoma (Equity)</strong></td>
+        <td>{{ "%.2f"|format(result.equity_book) }}</td>
+        <td>{{ "%.2f"|format(result.equity_market) }}</td>
+    </tr>
+</table>
 {% endif %}
-
 </body>
 </html>
+
