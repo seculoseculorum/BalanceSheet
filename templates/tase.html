@@ -179,62 +179,175 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>{{ "%.2f"|format(result.equity_market) }}</td>
     </tr>
 </table>
+<style>
+  .balance-wrapper {
+    display: flex;
+    gap: 80px;
+    flex-wrap: wrap;
+  }
+
+  .balance-block {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .chart {
+    display: flex;
+    gap: 40px;
+    align-items: flex-end;
+    position: relative;
+    height: 320px;
+  }
+
+  .column {
+    display: flex;
+    flex-direction: column-reverse;
+    width: 70px;
+    height: 300px;
+    border: 1px solid #bbb;
+    position: relative;
+  }
+
+  .asset {
+    background: #2E7D32;
+  }
+
+  .liability {
+    background: #C62828;
+  }
+
+  .equity-positive {
+    background: #1565C0;
+  }
+
+  .equity-negative {
+    background: #8B0000;
+  }
+
+  .segment {
+    width: 100%;
+  }
+
+  .neg-equity-column {
+    width: 70px;
+    height: 300px;
+    position: relative;
+    border: 1px dashed #8B0000;
+  }
+
+  .neg-equity-segment {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    background: #8B0000;
+  }
+
+  .label {
+    font-size: 12px;
+    margin-top: 8px;
+    text-align: center;
+  }
+</style>
+
 <hr>
 <h2>Visual Balance Breakdown</h2>
 
-<div style="display: flex; gap: 50px; flex-wrap: wrap;">
+<div class="balance-wrapper">
 
-  {% for value_type in ["book", "market"] %}
-  {% set total_height = result['total_assets_' + value_type] + result['equity_' + value_type] %}
-  {% if total_height == 0 %}
-    {% set total_height = 1 %} {# avoid division by zero #}
+{% for value_type in ["book", "market"] %}
+
+  {% set assets_total = result['total_assets_' + value_type] %}
+  {% if assets_total == 0 %}
+    {% set assets_total = 1 %}
   {% endif %}
-  <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+
+  {% set equity = result['equity_' + value_type] %}
+  {% set negative_equity = equity < 0 %}
+
+  {% if negative_equity %}
+    {% set total_liab = result.liabilities | sum(attribute=value_type + '_value') %}
+    {% set scale = 300 / [assets_total, total_liab] | max %}
+  {% else %}
+    {% set scale = 300 / assets_total %}
+  {% endif %}
+
+  <div class="balance-block">
+
     <h3>{{ "Kirjanpitoarvo" if value_type == "book" else "Markkina-arvo" }}</h3>
 
-    <div style="display: flex; align-items: flex-end; gap: 20px; height: 300px;">
+    <div class="chart">
 
-      <!-- Asset Names -->
-      <div style="display: flex; flex-direction: column; justify-content: flex-end; text-align: right; margin-right: 5px;">
-        {% for asset in result.assets %}
-          {% set height_px = (asset[value_type + '_value'] / total_height * 300) %}
-          <div style="height: {{ height_px }}px; margin-bottom: 2px;">{{ asset.name }}</div>
-        {% endfor %}
+      <!-- ASSETS -->
+      <div>
+        <div class="column">
+          {% for asset in result.assets %}
+            {% set h = asset[value_type + '_value'] * scale %}
+            <div class="segment asset"
+                 style="height: {{ h }}px"
+                 title="{{ asset.name }}: {{ asset[value_type + '_value'] }}">
+            </div>
+          {% endfor %}
+        </div>
+        <div class="label">Assets</div>
       </div>
 
-      <!-- Asset Bar -->
-      <div style="width: 60px; display: flex; flex-direction: column-reverse; border: 1px solid #ccc;">
-        {% for asset in result.assets %}
-          {% set height_px = (asset[value_type + '_value'] / total_height * 300) %}
-          <div style="height: {{ height_px }}px; background-color: #4CAF50;" title="{{ asset.name }}: {{ asset[value_type + '_value'] }}"></div>
-        {% endfor %}
+      <!-- LIABILITIES (+ equity if positive) -->
+      <div>
+        <div class="column">
+
+          {% for liab in result.liabilities %}
+            {% set h = liab[value_type + '_value'] * scale %}
+            <div class="segment liability"
+                 style="height: {{ h }}px"
+                 title="{{ liab.name }}: {{ liab[value_type + '_value'] }}">
+            </div>
+          {% endfor %}
+
+          {% if not negative_equity %}
+            {% set h = equity * scale %}
+            <div class="segment equity-positive"
+                 style="height: {{ h }}px"
+                 title="Equity: {{ equity }}">
+            </div>
+          {% endif %}
+
+        </div>
+        <div class="label">
+          Liabilities{% if not negative_equity %} + Equity{% endif %}
+        </div>
       </div>
 
-      <!-- Liability + Equity Bar -->
-      <div style="width: 60px; display: flex; flex-direction: column-reverse; border: 1px solid #ccc;">
-        {% for liab in result.liabilities %}
-          {% set height_px = (liab[value_type + '_value'] / total_height * 300) %}
-          <div style="height: {{ height_px }}px; background-color: #f44336;" title="{{ liab.name }}: {{ liab[value_type + '_value'] }}"></div>
-        {% endfor %}
-        {% set equity_height_px = (result['equity_' + value_type] / total_height * 300) %}
-        <div style="height: {{ equity_height_px }}px; background-color: #FF9800;" title="Oma pääoma: {{ result['equity_' + value_type] }}"></div>
-      </div>
+      <!-- NEGATIVE EQUITY (only if equity < 0) -->
+        {% if negative_equity %}
+        {% set total_liab = result.liabilities | sum(attribute=value_type + '_value') %}
+        {# equity_height = absolute difference between assets and liabilities #}
+        {% set equity_height = (total_liab - assets_total) * scale %}
 
-      <!-- Liability + Equity Names -->
-      <div style="display: flex; flex-direction: column; justify-content: flex-end; text-align: left; margin-left: 5px;">
-        {% for liab in result.liabilities %}
-          {% set height_px = (liab[value_type + '_value'] / total_height * 300) %}
-          <div style="height: {{ height_px }}px; margin-bottom: 2px;">{{ liab.name }}</div>
-        {% endfor %}
-        <div style="height: {{ equity_height_px }}px; margin-bottom: 2px;">Oma pääoma</div>
-      </div>
+        {# top of negative equity = top of liabilities bar minus equity height #}
+        {% set equity_top = liability_height %}  {# start at top of liability bar #}
+
+        <div>
+        <div class="neg-equity-column">
+            <div class="neg-equity-segment"
+                style="height: {{ equity_height }}px; top: {{ equity_top }}px;"
+                title="Negative equity: {{ equity }}">
+            </div>
+        </div>
+        <div class="label">
+            Negative equity {{ equity }}
+        </div>
+        </div>
+        {% endif %}
 
     </div>
+
   </div>
-  {% endfor %}
+
+{% endfor %}
 
 </div>
-
 {% endif %}
 </body>
 </html>
